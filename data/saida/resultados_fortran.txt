@@ -1,0 +1,71 @@
+ ========================================================================
+          MODELO CLIMÁTICO TERRESTRE - RESULTADOS FORTRAN
+                    Autor: Luiz Tiago Wilcke
+ ========================================================================
+
+ 1. CONSTANTES FÍSICAS FUNDAMENTAIS
+ -----------------------------------
+   Constante Gravitacional G =  6.67430E-11 m³/(kg·s²)
+   Constante de Boltzmann k  =  1.38065E-23 J/K
+   Constante Stefan-Boltzmann =  5.67037E-08 W/(m²·K⁴)
+   Constante Solar S0 =   1361.0 W/m²
+   Gravidade Superficie g =  9.80665 m/s²
+
+ 2. PARÂMETROS DO PLANETA TERRA
+ -------------------------------
+   Raio da Terra R =  6.37100E+06 m
+   Massa da Terra M =  5.97200E+24 kg
+   Obliquidade =  24.50 graus
+
+ 3. CALCULOS ATMOSFERICOS
+ ------------------------
+    Pressao de Vapor Saturado (Clausius-Clapeyron):
+     T = 273.15 K (0C):   e_s =   611.20 Pa
+     T = 288.15 K (15C):  e_s =  1704.05 Pa
+     T = 303.15 K (30C):  e_s =  4245.58 Pa
+
+    Temperatura Potencial theta = T(p0/p)^(R/cp):
+     T=280K, p=850hPa: theta =   293.30 K
+     T=250K, p=500hPa: theta =   304.74 K
+
+ 4. RADIACAO SOLAR
+ -----------------
+    Irradiancia no TOA por latitude (dia 172 - solsticio):
+     Lat  -90: S =  1380.02 W/m2, f = -1.458E-04 s-1
+     Lat  -60: S =  1380.02 W/m2, f = -1.263E-04 s-1
+     Lat  -30: S =  1380.02 W/m2, f = -7.292E-05 s-1
+     Lat    0: S =  1380.02 W/m2, f =  0.000E+00 s-1
+     Lat   30: S =  1380.02 W/m2, f =  7.292E-05 s-1
+     Lat   60: S =  1380.02 W/m2, f =  1.263E-04 s-1
+     Lat   90: S =  1380.02 W/m2, f =  1.458E-04 s-1
+
+ 5. EFEITO ESTUFA E FORCAMENTO RADIATIVO
+ ---------------------------------------
+    Forcamento Radiativo do CO2 (dF = 5.35*ln(C/C0)):
+     280 -> 350 ppm: dF =   1.19 W/m2
+     280 -> 420 ppm: dF =   2.17 W/m2
+     280 -> 560 ppm: dF =   3.71 W/m2
+     280 -> 840 ppm: dF =   5.88 W/m2
+
+    Temperatura de Equilibrio: T = [S0(1-a)/(4*e*sigma)]^(1/4)
+     Sem atmosfera (e=1, a=0.30): T = 254.58 K (-18.57 C)
+     Com efeito estufa (e=0.61): T = 288.06 K ( 14.91 C)
+
+ 6. PARAMETROS OCEANICOS
+ -----------------------
+   Densidade da agua do mar rho =   1025.0 kg/m3
+   Capacidade termica cp =   3993.0 J/(kg*K)
+   Coef. expansao termica alpha =  2.000E-04 K-1
+   Coef. contracao halina beta =  7.600E-04 psu-1
+
+ ========================================================================
+                       RESUMO DA SIMULACAO
+ ========================================================================
+    Modulos Fortran utilizados: 80
+    Constantes fisicas: 50+
+    Funcoes implementadas: 200+
+    Equacoes diferenciais: Navier-Stokes, Clausius-Clapeyron,
+                           Transferencia Radiativa, etc.
+
+                    Autor: Luiz Tiago Wilcke
+ ========================================================================
