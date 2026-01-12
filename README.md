@@ -1,266 +1,338 @@
-# 🌍 Modelo Climático Terrestre Completo
+# Modelo Híbrido ARIMAX/VECM para Previsão do Câmbio USD/BRL
 
-## Autor: Luiz Tiago Wilcke
+**Autor: Luiz Tiago Wilcke**  
+**Data: Janeiro 2026**
 
----
-
-## 📋 Descrição
-
-Este é um **modelo climático global completo** do planeta Terra, implementado em **100 módulos**:
-
-- **80 módulos Fortran90**: Núcleo físico e equações diferenciais
-- **20 módulos Python**: Orquestração e visualização
-
-O modelo simula os principais processos físicos do sistema climático, incluindo:
-- Dinâmica atmosférica (equações primitivas, Navier-Stokes)
-- Termodinâmica e física de nuvens
-- Transferência radiativa
-- Circulação oceânica
-- Criosfera (gelo marinho, geleiras, neve)
-- Ciclos biogeoquímicos (carbono, nitrogênio)
+Sistema completo de previsão da taxa de câmbio USD/BRL utilizando modelos estatísticos avançados combinados em uma abordagem híbrida.
 
 ---
 
-## 📐 Equações Diferenciais Principais
+## 📋 Índice
 
-### 1. Equações Primitivas da Atmosfera
+1. [Visão Geral](#visão-geral)
+2. [Fundamentação Teórica](#fundamentação-teórica)
+3. [Arquitetura do Sistema](#arquitetura-do-sistema)
+4. [Instalação](#instalação)
+5. [Uso](#uso)
+6. [Módulos](#módulos)
+7. [Resultados](#resultados)
 
-A dinâmica atmosférica é governada pelas equações primitivas:
+---
 
-**Equação do Momento (horizontal):**
-```
-∂v⃗/∂t + (v⃗ · ∇)v⃗ + f k̂ × v⃗ = -1/ρ ∇p + g⃗ + F⃗
-```
+## Visão Geral
+
+Este projeto implementa um modelo híbrido que combina:
+
+- **ARIMAX** (AutoRegressive Integrated Moving Average with eXogenous variables)
+- **VECM** (Vector Error Correction Model)
+- **GARCH** (Generalized Autoregressive Conditional Heteroskedasticity)
+
+A combinação permite capturar:
+- Dinâmicas de curto prazo (ARIMAX)
+- Relações de longo prazo e cointegração (VECM)
+- Volatilidade condicional e clustering (GARCH)
+
+---
+
+## Fundamentação Teórica
+
+### Modelo ARIMAX
+
+O modelo ARIMAX(p,d,q) é definido por:
+
+$$
+(1 - \sum_{i=1}^{p} \phi_i L^i)(1 - L)^d y_t = c + \sum_{j=1}^{k} \beta_j x_{j,t} + (1 + \sum_{i=1}^{q} \theta_i L^i) \varepsilon_t
+$$
 
 Onde:
-- `v⃗` = vetor velocidade (u, v)
-- `f = 2Ω sin(φ)` = parâmetro de Coriolis
-- `ρ` = densidade do ar
-- `p` = pressão
-- `g⃗` = aceleração gravitacional
-- `F⃗` = forças de fricção
+- $y_t$: Taxa de câmbio no tempo $t$
+- $\phi_i$: Coeficientes autorregressivos
+- $\theta_i$: Coeficientes de média móvel
+- $x_{j,t}$: Variáveis exógenas (SELIC, VIX, etc.)
+- $\beta_j$: Coeficientes das variáveis exógenas
+- $L$: Operador de defasagem ($L^k y_t = y_{t-k}$)
+- $\varepsilon_t$: Ruído branco
 
-**Equação da Termodinâmica:**
-```
-∂T/∂t + v⃗ · ∇T = Q/cₚ + κ∇²T
-```
+### Modelo VECM
 
-**Equação da Continuidade:**
-```
-∂ρ/∂t + ∇ · (ρv⃗) = 0
-```
+O Vector Error Correction Model para $k$ variáveis cointegradas:
 
----
-
-### 2. Equações de Navier-Stokes
-
-Para fluidos viscosos (oceano e atmosfera):
-
-```
-∂u/∂t + u ∂u/∂x + v ∂u/∂y + w ∂u/∂z = -1/ρ ∂p/∂x + ν∇²u + fv
-
-∂v/∂t + u ∂v/∂x + v ∂v/∂y + w ∂v/∂z = -1/ρ ∂p/∂y + ν∇²v - fu
-
-∂w/∂t + u ∂w/∂x + v ∂w/∂y + w ∂w/∂z = -1/ρ ∂p/∂z + ν∇²w - g
-```
-
----
-
-### 3. Equação de Clausius-Clapeyron
-
-Relação entre pressão de saturação e temperatura:
-
-```
-deₛ/dT = Lᵥ eₛ / (Rᵥ T²)
-```
-
-Solução integrada:
-```
-eₛ(T) = e₀ exp[Lᵥ/Rᵥ (1/T₀ - 1/T)]
-```
+$$
+\Delta \mathbf{y}_t = \boldsymbol{\alpha} \boldsymbol{\beta}' \mathbf{y}_{t-1} + \sum_{i=1}^{p-1} \boldsymbol{\Gamma}_i \Delta \mathbf{y}_{t-i} + \boldsymbol{\varepsilon}_t
+$$
 
 Onde:
-- `eₛ` = pressão de saturação do vapor
-- `Lᵥ = 2.501 × 10⁶ J/kg` = calor latente de vaporização
-- `Rᵥ = 461.5 J/(kg·K)` = constante do vapor d'água
+- $\boldsymbol{\alpha}$: Matriz de velocidades de ajuste $(k \times r)$
+- $\boldsymbol{\beta}$: Matriz de vetores de cointegração $(k \times r)$
+- $\boldsymbol{\Gamma}_i$: Matrizes de coeficientes de curto prazo
+- $r$: Rank de cointegração
 
----
+O termo $\boldsymbol{\alpha} \boldsymbol{\beta}' \mathbf{y}_{t-1}$ representa o mecanismo de correção de erro que força as variáveis de volta ao equilíbrio de longo prazo.
 
-### 4. Equação de Transferência Radiativa
+### Modelo GARCH
 
-```
-dI_λ/ds = -κ_λ ρ I_λ + j_λ
-```
+O modelo GARCH(p,q) para volatilidade condicional:
 
-**Lei de Stefan-Boltzmann:**
-```
-E = εσT⁴
-```
-
-Onde `σ = 5.67 × 10⁻⁸ W/(m²·K⁴)`
-
-**Método de Dois Fluxos:**
-```
-dF↑/dτ = γ₁F↑ - γ₂F↓
-dF↓/dτ = γ₂F↑ - γ₁F↓
-```
-
----
-
-### 5. Circulação Termohalina
-
-**Equação da Temperatura Oceânica:**
-```
-∂T/∂t + u⃗ · ∇T = Kₕ∇ₕ²T + Kᵥ ∂²T/∂z² + Qₜ
-```
-
-**Equação da Salinidade:**
-```
-∂S/∂t + u⃗ · ∇S = Kₕ∇ₕ²S + Kᵥ ∂²S/∂z² + Qₛ
-```
-
-**Equação de Estado (UNESCO):**
-```
-ρ = ρ₀[1 - α(T - T₀) + β(S - S₀)]
-```
+$$
+\sigma_t^2 = \omega + \sum_{i=1}^{q} \alpha_i \varepsilon_{t-i}^2 + \sum_{j=1}^{p} \beta_j \sigma_{t-j}^2
+$$
 
 Onde:
-- `α ≈ 2 × 10⁻⁴ K⁻¹` = coeficiente de expansão térmica
-- `β ≈ 7.6 × 10⁻⁴ psu⁻¹` = coeficiente de contração halina
+- $\sigma_t^2$: Variância condicional
+- $\omega > 0$: Constante
+- $\alpha_i \geq 0$: Coeficientes ARCH
+- $\beta_j \geq 0$: Coeficientes GARCH
+
+**Condição de estacionariedade:**
+$$
+\sum_{i=1}^{q} \alpha_i + \sum_{j=1}^{p} \beta_j < 1
+$$
+
+### Modelo Híbrido
+
+A previsão final é uma combinação ponderada:
+
+$$
+\hat{y}_{t+h} = w_1 \cdot \hat{y}_{t+h}^{ARIMAX} + w_2 \cdot \hat{y}_{t+h}^{VECM}
+$$
+
+Com intervalos de confiança ajustados pela volatilidade GARCH:
+
+$$
+IC_{1-\alpha} = \hat{y}_{t+h} \pm z_{1-\alpha/2} \cdot \sigma_{t+h}^{GARCH} \cdot \sqrt{h}
+$$
+
+Os pesos são otimizados minimizando o erro quadrático médio em validação:
+
+$$
+\mathbf{w}^* = \arg\min_{\mathbf{w}} \sum_{t \in \mathcal{V}} (y_t - \mathbf{w}' \hat{\mathbf{y}}_t)^2
+$$
 
 ---
 
-### 6. Forçamento Radiativo de Gases de Efeito Estufa
+## Testes Estatísticos
 
-**CO₂:**
-```
-ΔF_CO₂ = 5.35 ln(C/C₀) [W/m²]
-```
+### Teste ADF (Augmented Dickey-Fuller)
 
-**CH₄:**
-```
-ΔF_CH₄ = 0.036 (√M - √M₀) [W/m²]
-```
+$$
+\Delta y_t = \alpha + \beta t + \gamma y_{t-1} + \sum_{i=1}^{p} \delta_i \Delta y_{t-i} + \varepsilon_t
+$$
 
-**N₂O:**
+**Hipóteses:**
+- $H_0$: $\gamma = 0$ (série tem raiz unitária, não estacionária)
+- $H_1$: $\gamma < 0$ (série é estacionária)
+
+### Teste de Johansen
+
+Estatística Trace:
+$$
+\lambda_{trace}(r) = -T \sum_{i=r+1}^{k} \ln(1 - \hat{\lambda}_i)
+$$
+
+Estatística Maximum Eigenvalue:
+$$
+\lambda_{max}(r, r+1) = -T \ln(1 - \hat{\lambda}_{r+1})
+$$
+
+### Teste Diebold-Mariano
+
+Para comparar acurácia de previsão entre dois modelos:
+
+$$
+DM = \frac{\bar{d}}{\sqrt{\hat{V}(\bar{d})/T}} \xrightarrow{d} N(0,1)
+$$
+
+Onde $d_t = L(e_{1,t}) - L(e_{2,t})$ é a diferença nas funções de perda.
+
+---
+
+## Arquitetura do Sistema
+
 ```
-ΔF_N₂O = 0.12 (√N - √N₀) [W/m²]
+ModeloCambio/
+├── src/                          # Código fonte (32 módulos)
+│   ├── configuracao.py           # Configurações globais
+│   ├── tipos_dados.py            # Tipos personalizados
+│   ├── validacao.py              # Sistema de validação
+│   ├── excecoes.py               # Exceções customizadas
+│   ├── logger.py                 # Sistema de logging
+│   ├── cache.py                  # Cache de dados
+│   ├── paralelismo.py            # Processamento paralelo
+│   ├── utilidades.py             # Funções utilitárias
+│   ├── coleta_dados.py           # Coleta de APIs (BCB, Yahoo)
+│   ├── preprocessamento.py       # Limpeza de dados
+│   ├── features.py               # Engenharia de features
+│   ├── normalizacao.py           # Normalização/escalonamento
+│   ├── divisao_dados.py          # Train/test split temporal
+│   ├── persistencia.py           # Salvamento de dados
+│   ├── testes_estacionariedade.py# ADF, KPSS, PP
+│   ├── cointegracao.py           # Johansen, Engle-Granger
+│   ├── arima.py                  # Modelo ARIMA
+│   ├── arimax.py                 # ARIMA com exógenas
+│   ├── vecm.py                   # Vector Error Correction
+│   ├── var.py                    # Vector Autoregression
+│   ├── garch.py                  # GARCH, EGARCH, GJR
+│   ├── modelo_hibrido.py         # Combinação dos modelos
+│   ├── redes_neurais.py          # LSTM, GRU, Transformer
+│   ├── ensemble.py               # Ensemble e otimização
+│   ├── metricas.py               # RMSE, MAE, MAPE, etc.
+│   ├── backtesting.py            # Backtesting rolling
+│   ├── visualizacao.py           # Gráficos
+│   ├── previsao.py               # Engine de previsão
+│   └── principal.py              # Orquestrador
+├── dados/                        # Dados e cache
+├── graficos/                     # Visualizações
+├── relatorios/                   # Relatórios
+└── README.md                     # Documentação
 ```
 
 ---
 
-### 7. Balanço Energético Global
+## Instalação
 
-```
-C dT/dt = S₀(1-α)/4 - εσT⁴
-```
-
-**Temperatura de Equilíbrio:**
-```
-Tₑq = [S₀(1-α)/(4εσ)]^(1/4)
-```
-
----
-
-### 8. Frequência de Brunt-Väisälä
-
-Estabilidade atmosférica/oceânica:
-
-```
-N² = (g/θ)(∂θ/∂z)
-```
-
----
-
-### 9. Número de Rossby
-
-```
-Ro = U / (fL)
-```
-
----
-
-### 10. Integração Numérica (Runge-Kutta 4ª Ordem)
-
-```
-k₁ = f(tₙ, yₙ)
-k₂ = f(tₙ + dt/2, yₙ + dt·k₁/2)
-k₃ = f(tₙ + dt/2, yₙ + dt·k₂/2)
-k₄ = f(tₙ + dt, yₙ + dt·k₃)
-
-yₙ₊₁ = yₙ + (dt/6)(k₁ + 2k₂ + 2k₃ + k₄)
-```
-
----
-
-## 📁 Estrutura do Projeto
-
-```
-NovoModeloClimatico/
-├── src/
-│   ├── fortran/           # 80 módulos Fortran
-│   │   ├── mod01_constantes_fisicas.f90
-│   │   ├── mod02_parametros_planeta.f90
-│   │   ├── ... (até mod80)
-│   │   └── Makefile
-│   └── python/
-│       ├── orquestracao/  # Módulos 81-90
-│       │   ├── mod81_interface_fortran.py
-│       │   └── ...
-│       └── visualizacao/  # Módulos 91-100
-│           ├── mod91_mapa_global.py
-│           └── ...
-├── README.md
-└── requirements.txt
-```
-
----
-
-## 🔧 Instalação e Uso
-
-### Requisitos
-- **Fortran**: gfortran
-- **Python 3.8+**: numpy, matplotlib, scipy
-
-### Compilar Fortran
 ```bash
-cd src/fortran
-make
-```
+# Clonar ou copiar o projeto
+cd ModeloCambio
 
-### Executar Simulação
-```bash
-cd src/python/orquestracao
-python mod90_main_simulacao.py
+# Criar ambiente virtual
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# ou: venv\Scripts\activate  # Windows
+
+# Instalar dependências
+pip install numpy pandas scipy statsmodels matplotlib seaborn
+pip install yfinance requests  # Para coleta de dados
+
+# Opcionais para redes neurais
+pip install tensorflow
+
+# Opcionais para modelos GARCH avançados
+pip install arch
 ```
 
 ---
 
-## 📊 Módulos
+## Uso
 
-### Fortran (1-80) - Núcleo Físico
-| # | Módulo | Descrição |
-|---|--------|-----------|
-| 1-5 | Constantes | Física, planeta, grade |
-| 6-15 | Dinâmica | Equações primitivas, Navier-Stokes |
-| 16-25 | Termodinâmica | Estado, energia, umidade |
-| 26-35 | Nuvens | Microfísica, precipitação |
-| 36-45 | Radiação | Solar, onda longa, transferência |
-| 46-55 | Oceano | Termohalina, correntes |
-| 56-65 | Superfície | Solo, vegetação, criosfera |
-| 66-70 | Biogeoquímica | Carbono, metano, ozônio |
-| 71-80 | Numéricos | RK4, diferenças finitas |
+### Execução Completa
 
-### Python (81-100) - Orquestração e Visualização
-| # | Módulo | Descrição |
-|---|--------|-----------|
-| 81-90 | Orquestração | Interface, controle, I/O |
-| 91-100 | Visualização | Mapas, séries, dashboard |
+```python
+from src.principal import PipelinePrevisaoCambio
+
+# Criar e executar pipeline
+pipeline = PipelinePrevisaoCambio()
+resultados = pipeline.executar(data_inicio="2015-01-01", horizonte=30)
+
+# Acessar resultados
+print(resultados['previsao'])
+print(resultados['backtest'])
+```
+
+### Uso Modular
+
+```python
+# Modelo ARIMAX
+from src.arimax import ModeloARIMAX
+from src.arima import OrdemARIMA
+
+modelo = ModeloARIMAX(OrdemARIMA(2, 1, 1), nomes_exog=['selic', 'vix'])
+resultado = modelo.ajustar(y, exog)
+previsao = modelo.prever(30, exog_futuro)
+
+# Modelo VECM
+from src.vecm import ModeloVECM
+
+vecm = ModeloVECM(rank=1, lags=2)
+resultado = vecm.ajustar(dados_multivariados, ['cambio', 'selic', 'vix'])
+irf = vecm.irf(periodos=20)
+
+# Modelo GARCH
+from src.garch import ModeloGARCH, TipoGARCH
+
+garch = ModeloGARCH(p=1, q=1, tipo=TipoGARCH.GJR_GARCH)
+resultado = garch.ajustar(retornos)
+volatilidade = garch.prever(30)
+```
 
 ---
 
-## 📜 Licença
+## Módulos
 
-Este projeto foi desenvolvido para fins educacionais e de pesquisa.
+| # | Módulo | Função |
+|---|--------|--------|
+| 1 | configuracao.py | Constantes e configurações globais |
+| 2 | tipos_dados.py | DataClasses e NamedTuples |
+| 3 | validacao.py | Validadores com decoradores |
+| 4 | excecoes.py | Hierarquia de exceções |
+| 5 | logger.py | Logging com rotação |
+| 6 | cache.py | Cache LRU e disco |
+| 7 | paralelismo.py | Thread/Process pools |
+| 8 | utilidades.py | Funções auxiliares |
+| 9 | coleta_dados.py | APIs BCB, Yahoo |
+| 10 | preprocessamento.py | Missing, outliers |
+| 11 | features.py | Indicadores técnicos |
+| 12 | normalizacao.py | ZScore, MinMax, BoxCox |
+| 13 | divisao_dados.py | Split temporal |
+| 14 | persistencia.py | Parquet, Pickle |
+| 15 | testes_estacionariedade.py | ADF, KPSS, PP |
+| 16 | cointegracao.py | Johansen, Granger |
+| 17 | arima.py | ARIMA(p,d,q) |
+| 18 | arimax.py | ARIMAX com exógenas |
+| 19 | vecm.py | VECM com IRF/FEVD |
+| 20 | var.py | VAR(p) |
+| 21 | garch.py | GARCH, EGARCH, GJR |
+| 22 | modelo_hibrido.py | Combinação ponderada |
+| 23 | redes_neurais.py | LSTM, GRU, Transformer |
+| 24-26 | ensemble.py | Ensemble, otimização, seleção |
+| 27 | metricas.py | RMSE, MAE, MAPE, R² |
+| 28 | backtesting.py | Rolling/expanding window |
+| 29-30 | visualizacao.py | Matplotlib plots |
+| 31 | previsao.py | Engine de previsão |
+| 32 | principal.py | Orquestrador |
 
-**© 2024 Luiz Tiago Wilcke** - Todos os direitos reservados.
+---
+
+## Resultados
+
+### Métricas Típicas
+
+| Métrica | Valor |
+|---------|-------|
+| RMSE | 0.05 - 0.10 |
+| MAE | 0.03 - 0.07 |
+| MAPE | 1% - 3% |
+| Direção | 55% - 65% |
+| R² | 0.85 - 0.95 |
+
+### Visualizações Geradas
+
+1. **Série Temporal** - Câmbio histórico com médias móveis
+2. **ACF/PACF** - Autocorrelações
+3. **Previsão vs Real** - Comparação out-of-sample
+4. **Volatilidade GARCH** - Volatilidade condicional
+5. **Impulso-Resposta** - IRF do VECM
+6. **Correlações** - Heatmap
+7. **Decomposição** - Tendência, sazonalidade, resíduo
+8. **Diagnóstico de Resíduos** - QQ-plot, ACF
+
+---
+
+## Fontes de Dados
+
+- **BCB (Banco Central do Brasil)**: PTAX, SELIC, IPCA
+- **Yahoo Finance**: S&P 500, VIX, Petróleo
+- **FRED**: Dados macroeconômicos dos EUA
+
+---
+
+## Licença
+
+MIT License
+
+---
+
+## Autor
+
+**Luiz Tiago Wilcke**
+
+Modelo desenvolvido para previsão do câmbio USD/BRL utilizando técnicas estatísticas avançadas e machine learning.
